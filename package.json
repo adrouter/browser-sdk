@@ -1,0 +1,55 @@
+{
+  "name": "@adrouter/browser-sdk",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./react": {
+      "types": "./dist/react.d.ts",
+      "import": "./dist/react.js"
+    },
+    "./server": {
+      "types": "./dist/server.d.ts",
+      "import": "./dist/server.js"
+    }
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "build": "tsc",
+    "test": "tsx --test tests/*.test.ts",
+    "test:package": "node scripts/test-package.mjs"
+  },
+  "dependencies": {
+    "zod": "3.25.76"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "typescript": "5.8.3",
+    "tsx": "4.22.4",
+    "@types/node": "22.20.0",
+    "@types/react": "19.2.17",
+    "react": "19.2.7"
+  },
+  "license": "MIT",
+  "packageManager": "npm@10.9.3",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/adrouter/browser-sdk.git"
+  }
+}
