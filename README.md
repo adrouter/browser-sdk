@@ -1,4 +1,4 @@
-# AdRouter browser SDK 0.1.0
+# AdRouter browser SDK 0.1.1
 
 Route your text chatbot through AdRouter and show a sponsored card beside an unchanged answer.
 The browser client, optional React components and Web API server proxy are separate exports.
@@ -23,13 +23,18 @@ Cloudflare's trusted `CF-Connecting-IP` header. The operator completes setup in
 Install the release tarball; npm publication is disabled:
 
 ```sh
-npm install https://github.com/adrouter/browser-sdk/releases/download/v0.1.0/adrouter-browser-sdk-0.1.0.tgz
+npm install https://github.com/adrouter/browser-sdk/releases/download/v0.1.1/adrouter-browser-sdk-0.1.1.tgz
 ```
 
-The release also contains `adrouter-browser-sdk-0.1.0.tgz.json`, with SHA-256, package integrity
+The release also contains `adrouter-browser-sdk-0.1.1.tgz.json`, with SHA-256, package integrity
 and source identity. Verify downloaded tarballs against it before installation. Package bytes
 are immutable; fixes use a new version. React 19 is an optional peer dependency. The package
 is MIT-licensed and its source is available in this repository.
+
+0.1.1 fixes the server proxy on Cloudflare Workers. In 0.1.0 every gateway relay asked `fetch` for
+`redirect: 'error'`, which the Workers runtime rejects, so chat and the other relayed routes returned
+`service_unavailable` before reaching the gateway. 0.1.1 uses `redirect: 'manual'` and refuses any
+gateway redirect. Replace 0.1.0 with 0.1.1; nothing else changes.
 
 ## 2. Server proxy
 
@@ -256,6 +261,7 @@ metadata and never replays provider inference.
 | `forbidden` | Exact publisher origin, trusted Cloudflare IP header and reviewed placement origin |
 | `unknown_persona` | Browser slug matches the server-owned persona map |
 | `turnstile_failed` | Real widget, exact hostname, `chat` action, fresh token; reset after an attempted POST |
+| `service_unavailable` from `/api/chat` while `/api/session` succeeds | SDK 0.1.0 on Cloudflare Workers; upgrade to 0.1.1 |
 | `connection_unavailable` | Paused app qualification, all three fixtures, current credential/tokenizer revision |
 | Daily limit / `global_busy` | Read the configured cap or wait for the current turn; do not retry uncertain inference |
 | `input_limit` | Shorten the newest message or history; output remains capped at 512 |

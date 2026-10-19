@@ -76,3 +76,40 @@ test('optional deadlines permit sessions and unknown personas reject before Turn
     assert.equal((await proxy.chat(known)).status,200);assert.equal(calls,2);
   }finally{globalThis.fetch=original;}
 });
+
+// Mirrors the Cloudflare Workers runtime, which rejects these RequestInit values with a TypeError.
+const workersFetch=(respond:(url:string)=>Response,calls:string[])=>async(url:RequestInfo|URL,init?:RequestInit)=>{
+  if(init?.redirect!==undefined&&init.redirect!=='follow'&&init.redirect!=='manual')throw new TypeError('Invalid redirect value, must be one of "follow" or "manual".');
+  for(const field of ['cache','credentials','mode'] as const)if(init?.[field]!==undefined)throw new TypeError(`The '${field}' field on 'RequestInitializerDict' is not implemented.`);
+  calls.push(new URL(String(url)).pathname);return respond(String(url));
+};
+const turnBody={contract_version:'3.0-mvp.1',interaction_id:'00000000-0000-4000-8000-000000000002',created_at:new Date().toISOString(),
+  messages:[{role:'user',content:'Synthetic Workers fixture.'}],sponsorship_enabled:true,turnstile_token:'synthetic'};
+test('every relayed route uses only Workers-supported fetch options',async()=>{
+  const proxy=createPublisherProxy(options),issued=await proxy.session(request('/api/session'));
+  const cookie=issued.headers.get('Set-Cookie')!.split(';')[0],original=globalThis.fetch,calls:string[]=[];
+  globalThis.fetch=workersFetch(url=>url.includes('siteverify')?Response.json({success:true,hostname:'publisher.example',action:'chat'}):
+    new Response('{}',{headers:{'Content-Type':'application/json'}}),calls);
+  try{
+    const status=new Request(options.allowedOrigin+'/api/turns/turn-unit',{headers:{Cookie:cookie}});
+    const responses=[await proxy.chat(request('/api/chat',turnBody,cookie)),await proxy.status(status,'turn-unit'),
+      await proxy.cancel(request('/api/turns/turn-unit/cancel',undefined,cookie),'turn-unit'),
+      await proxy.feedback(request('/api/feedback',{contract_version:'3.0-mvp.1',feedback_id:'00000000-0000-4000-8000-000000000003',turn_id:'turn-unit',answer:'helpful'},cookie)),
+      await proxy.clientEvents(request('/api/client-events',{contract_version:'3.0-mvp.1',event_id:'00000000-0000-4000-8000-000000000004',turn_id:'turn-unit',
+        type:'stream_completed',occurred_at:new Date().toISOString(),sdk_version:'0.1.1'},cookie))];
+    assert.deepEqual(responses.map(response=>response.status),[200,200,200,200,200]);
+    assert.deepEqual(calls,['/turnstile/v0/siteverify','/v3/gateway/turns','/v3/gateway/turns/turn-unit','/v3/gateway/turns/turn-unit/cancel',
+      '/v3/publisher/feedback','/v3/publisher/client-events']);
+  }finally{globalThis.fetch=original;}
+});
+test('a gateway redirect is refused, never followed or forwarded',async()=>{
+  const proxy=createPublisherProxy(options),issued=await proxy.session(request('/api/session'));
+  const cookie=issued.headers.get('Set-Cookie')!.split(';')[0],original=globalThis.fetch,calls:string[]=[];
+  globalThis.fetch=workersFetch(url=>url.includes('siteverify')?Response.json({success:true,hostname:'publisher.example',action:'chat'}):
+    new Response(null,{status:302,headers:{Location:'https://elsewhere.example/'}}),calls);
+  try{
+    const response=await proxy.chat(request('/api/chat',turnBody,cookie));
+    assert.equal(response.status,503);assert.equal(((await response.json()) as {error:{code:string}}).error.code,'service_unavailable');
+    assert.equal(response.headers.has('Location'),false);assert.deepEqual(calls,['/turnstile/v0/siteverify','/v3/gateway/turns']);
+  }finally{globalThis.fetch=original;}
+});

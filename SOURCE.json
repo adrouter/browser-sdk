@@ -1,14 +1,14 @@
 {
-  "source_sha": "1a5ca25fbd69b83a0b3b874dfe3c5f09fb48009c",
+  "source_sha": "a49648d6a75a8a0c02c4aa2c61e71b9e56292b50",
   "source_directory": "sdk",
   "files": [
     {
       "path": "package.json",
-      "sha256": "d09a1a08cd205c7f5abeea0d7a833b9d7898184d9f3e38d599be8baaa8de3a9e"
+      "sha256": "a0b41110ef086a89a83f2b2f7874e2f2540557779efe73d4cdbd9e9d138f2a0b"
     },
     {
       "path": "package-lock.json",
-      "sha256": "760db4793e2885c7495baa5dc06ff3b87358fcdd9854d3cd623a3c65486aa95e"
+      "sha256": "b23b612cbe9aa4874043954a27ca9c1bee9286a334f695dc1c146556838e3dff"
     },
     {
       "path": "tsconfig.json",
@@ -16,7 +16,7 @@
     },
     {
       "path": "README.md",
-      "sha256": "eda5b15321c9447d6fee5a9a38ad0b19a381fc1d96067f42848901023d73f967"
+      "sha256": "7de69beb924fad1706e3c9d7d1e0cc3517bd7898b46531d5ae91b52d10120266"
     },
     {
       "path": "LICENSE",
@@ -64,7 +64,7 @@
     },
     {
       "path": "src/server.ts",
-      "sha256": "ad5e2fccc68065ad243d772f7eb9db281c5fdbf3ad55365dc4d0deab318e7bca"
+      "sha256": "42c09c8153f2387ea0fa2c6155fc6dce0de8f17614389aabb54d57ad00308de8"
     },
     {
       "path": "src/types.ts",
@@ -72,7 +72,7 @@
     },
     {
       "path": "src/version.ts",
-      "sha256": "b7196f4be960a8869bad0d0e28ccf83c3c59d20db5c1a5399a3ac134f5957d46"
+      "sha256": "019879cfa6e2eb87b9e56f65370e79f624a828526d0589642c482f7e508a12ab"
     },
     {
       "path": "tests/client.test.ts",
@@ -88,7 +88,7 @@
     },
     {
       "path": "tests/proxy.test.ts",
-      "sha256": "9a7ab63ea01b072e26ab361d3864b409d5e8fd9fbadca29435d85c6252c266ff"
+      "sha256": "bddf498657632535f370bcea090c4b030ee2081f1340cb77363be86ba59afcec"
     }
   ]
 }
