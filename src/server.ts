@@ -74,8 +74,10 @@ export function createPublisherProxy(options:PublisherProxyOptions):PublisherPro
       if(!operation || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(operation))throw new Error('invalid_request');
       headers['Idempotency-Key']=operation;
     }
+    // Cloudflare Workers reject the "error" redirect mode. Never follow or forward a gateway redirect.
     const response=await fetch(options.gatewayOrigin+path,{method:request.method,headers,
-      body:body===undefined?undefined:JSON.stringify(body),signal:request.signal,redirect:'error'});
+      body:body===undefined?undefined:JSON.stringify(body),signal:request.signal,redirect:'manual'});
+    if(response.status>=300&&response.status<400){await response.body?.cancel().catch(()=>undefined);throw new Error('service_unavailable');}
     const outgoing=new Headers({'Content-Type':response.headers.get('Content-Type')??'application/json',
       'Cache-Control':'no-store, no-transform','X-Content-Type-Options':'nosniff'});
     const retry=response.headers.get('Retry-After');if(retry)outgoing.set('Retry-After',retry);
