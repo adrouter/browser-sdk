@@ -115,8 +115,13 @@ export function createAdRouterClient(options:ClientOptions):AdRouterClient {
     dispose(){disposed=true;for(const abort of active)abort.abort();for(const handle of placements)handle.dispose();placements.clear();feedbackIds.clear();
       if(typeof window!=='undefined')window.removeEventListener('pagehide',onPageHide);}
   };
-  const onPageHide=()=>client.dispose();
+  // A page kept in the back/forward cache can be restored: stop active work and measurement there,
+  // but keep the client usable. Any other page hide disposes it.
+  const onPageHide=(event:Event)=>{
+    if(!(event as Event&{persisted?:boolean}).persisted){client.dispose();return;}
+    for(const abort of active)abort.abort();for(const handle of placements)handle.dispose();placements.clear();
+  };
   bindPlacementTransport(client,{endpoint:options.endpoints.measurement,fetcher});
-  if(typeof window!=='undefined')window.addEventListener('pagehide',onPageHide,{once:true});
+  if(typeof window!=='undefined')window.addEventListener('pagehide',onPageHide);
   return client;
 }

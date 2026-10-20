@@ -3,10 +3,17 @@ import { createAdRouterClient, renderSponsorCard } from './index.js';
 import type { AdRouterClient, ClientOptions, SDKError, TurnHandle, PlacementState } from './types.js';
 import type {HistoryTrimmed} from './history.js';
 import type { PublicMessage, SponsorOffer, TurnStatus } from './generated/wire.js';
+import { PublicMessageSchema } from './generated/schema.js';
 export interface ReactChatState {messages:PublicMessage[];answer:string;offer:SponsorOffer|null;busy:boolean;turn:TurnStatus|null;error:SDKError|null;historyTrimmed:HistoryTrimmed|null}
-export interface ReactChatController {client:AdRouterClient;state:ReactChatState;send(text:string,options?:{sponsorshipEnabled?:boolean}):Promise<void>;cancel():Promise<void>}
-export function useAdRouterChat(options:ClientOptions):ReactChatController {
-  const [state,setState]=useState<ReactChatState>({messages:[],answer:'',offer:null,busy:false,turn:null,error:null,historyTrimmed:null});
+export interface ReactChatController {client:AdRouterClient;state:ReactChatState;send(text:string,options?:{sponsorshipEnabled?:boolean}):Promise<void>;cancel():Promise<void>;
+  /** Replaces the conversation, for example to start a new story. Ignored while a turn is active. */
+  reset(messages?:PublicMessage[]):void}
+/** `initialMessages` seeds the conversation, for example from browser storage. Invalid entries are dropped. */
+export interface ReactChatInit {initialMessages?:PublicMessage[]}
+const conversation=(messages:PublicMessage[]|undefined)=>(messages??[]).filter(message=>PublicMessageSchema.safeParse(message).success)
+  .map(message=>({role:message.role,content:message.content}));
+export function useAdRouterChat(options:ClientOptions,init?:ReactChatInit):ReactChatController {
+  const [state,setState]=useState<ReactChatState>(()=>({messages:conversation(init?.initialMessages),answer:'',offer:null,busy:false,turn:null,error:null,historyTrimmed:null}));
   const stateRef=useRef(state);stateRef.current=state;
   const active=useRef<TurnHandle|null>(null),answer=useRef(''),mounted=useRef(true),clientRef=useRef<AdRouterClient|null>(null);
   if(!clientRef.current)clientRef.current=createAdRouterClient({...options,
@@ -35,7 +42,9 @@ export function useAdRouterChat(options:ClientOptions):ReactChatController {
       if(deliveryError){try{options.onError?.(deliveryError);}catch{}}
     }catch(error){if(mounted.current)setState(s=>({...s,error:error as SDKError}));}
     finally{active.current=null;if(mounted.current)setState(s=>({...s,busy:false}));}
-  },async cancel(){await active.current?.cancel();}};
+  },async cancel(){await active.current?.cancel();},
+  reset(messages){if(active.current)return;answer.current='';
+    setState(s=>({...s,messages:conversation(messages),answer:'',offer:null,turn:null,error:null,historyTrimmed:null}));}};
 }
 export function SponsoredCard(props:{client:AdRouterClient;offer:SponsorOffer;className?:string;onState?:(state:PlacementState)=>void}):ReactElement|null {
   const root=useRef<HTMLDivElement>(null);

@@ -1,4 +1,4 @@
-# AdRouter browser SDK 0.1.1
+# AdRouter browser SDK 0.2.0
 
 Route your text chatbot through AdRouter and show a sponsored card beside an unchanged answer.
 The browser client, optional React components and Web API server proxy are separate exports.
@@ -23,18 +23,26 @@ Cloudflare's trusted `CF-Connecting-IP` header. The operator completes setup in
 Install the release tarball; npm publication is disabled:
 
 ```sh
-npm install https://github.com/adrouter/browser-sdk/releases/download/v0.1.1/adrouter-browser-sdk-0.1.1.tgz
+npm install https://github.com/adrouter/browser-sdk/releases/download/v0.2.0/adrouter-browser-sdk-0.2.0.tgz
 ```
 
-The release also contains `adrouter-browser-sdk-0.1.1.tgz.json`, with SHA-256, package integrity
-and source identity. Verify downloaded tarballs against it before installation. Package bytes
-are immutable; fixes use a new version. React 19 is an optional peer dependency. The package
-is MIT-licensed and its source is available in this repository.
+The release also contains `adrouter-browser-sdk-0.2.0.tgz.json`, with SHA-256, package integrity
+and source identity. Verify the download before installing it, then check that your lockfile records
+the same integrity:
 
-0.1.1 fixes the server proxy on Cloudflare Workers. In 0.1.0 every gateway relay asked `fetch` for
-`redirect: 'error'`, which the Workers runtime rejects, so chat and the other relayed routes returned
-`service_unavailable` before reaching the gateway. 0.1.1 uses `redirect: 'manual'` and refuses any
-gateway redirect. Replace 0.1.0 with 0.1.1; nothing else changes.
+```sh
+shasum -a 256 adrouter-browser-sdk-0.2.0.tgz   # must equal the manifest's sha256
+grep -A3 '"node_modules/@adrouter/browser-sdk"' package-lock.json   # integrity must equal the manifest's
+```
+
+Package bytes are immutable; fixes use a new version. React 19 is an optional peer dependency.
+The package is MIT-licensed and its source is available in this repository.
+
+**0.2.0** adds `initialMessages` and `reset()` to `useAdRouterChat`, keeps the client usable after
+a back/forward-cache restore, and tests the server proxy in workerd. **0.1.1** fixed the server
+proxy on Cloudflare Workers: 0.1.0 asked `fetch` for `redirect: 'error'`, which Workers reject, so
+every relayed route returned `service_unavailable` before reaching the gateway. Upgrade from either
+by installing 0.2.0; no server or binding changes are needed.
 
 ## 2. Server proxy
 
@@ -79,9 +87,15 @@ export function publisher(env: Env) {
 }
 ```
 
+The binding names above are examples. If your publisher already has bindings holding the same
+values, such as `PUBLIC_ORIGIN`, `TURNSTILE_SECRET_KEY` or `SESSION_SECRET`, map them here instead of
+entering the values again.
+
 The model ID comes from the qualified connection and gateway catalog. Pilot 1's source resolves
-`deepseek-v4-flash`. Use the exact IDs shown by the console. Each signing/HMAC secret needs at
-least 32 random bytes from a password manager. Use different values for the two purposes.
+`deepseek-v4-flash`. Use the exact IDs shown by the console. The provider connection and placement
+IDs are not credentials, but they exist only after console setup; keep them in server bindings
+rather than source, so a public repository need not change when they do. Each signing/HMAC secret
+needs at least 32 random bytes from a password manager. Use different values for the two purposes.
 
 Wire these Pages Function handlers to the proxy. The examples use small local structural types;
 you may use Cloudflare's generated `PagesFunction<Env>` types instead.
@@ -120,11 +134,31 @@ export const onRequestPost = ({ request, env }: { request: Request; env: Env }) 
   publisher(env).clientEvents(request);
 ```
 
-Preserve the publisher's explicit paused state before invoking `chat`. Do not keep a direct
-provider fallback after cutover. Forward streaming responses without reading or buffering their
-bodies. Apply your security headers to static files and Function responses, including errors.
-Your CSP must allow the real Turnstile script/frame and the gateway measurement origin in
-`connect-src`. Never enable broad CORS on these publisher mutation routes.
+Preserve the publisher's explicit paused state before invoking `chat`, so a paused publisher never
+reaches Turnstile or the gateway. Answer in the SDK's safe-error shape, which the browser client
+maps to an error:
+
+```ts
+// functions/api/chat.ts, with an ADROUTER_ENABLED binding that must be exactly "true"
+export const onRequestPost = ({ request, env }: { request: Request; env: Env & { ADROUTER_ENABLED?: string } }) =>
+  env.ADROUTER_ENABLED === 'true' ? publisher(env).chat(request)
+    : Response.json({ error: { code: 'app_disabled', message: 'Chat is paused.', retryable: false },
+        request_id: crypto.randomUUID() }, { status: 503, headers: { 'Cache-Control': 'no-store' } });
+```
+
+Do not keep a direct provider fallback after cutover. Forward streaming responses without reading
+or buffering their bodies. The proxy sets `Cache-Control: no-store, no-transform` on relayed
+responses; middleware that sets its own `Cache-Control` must keep `no-transform`, or streamed
+replies may be buffered. Apply your security headers to static files and Function responses,
+including errors. Your CSP must allow the real Turnstile script and frame, and the gateway
+measurement origin in `connect-src`. On Pages that means both the static `_headers` file and any
+Function middleware, for example
+`connect-src 'self' https://challenges.cloudflare.com https://adrouter-v3.fly.dev`. Never enable
+broad CORS on these publisher mutation routes.
+
+Node tests that stub `fetch` cannot catch runtime differences. Before deploying, run your built
+Functions in workerd (for example with Miniflare, intercepting every outbound fetch), as this
+package's own `tests/workerd.test.ts` does.
 
 ## 3. Browser core
 
@@ -176,6 +210,13 @@ if (result.delivery !== 'complete') showInterruptedNotice();
 publisher. They are not SDK globals. Sponsor copy belongs only in its reserved placement. Copy
 answers from your model-text state, never from a container holding sponsored content.
 
+If a reply is interrupted, show the partial text marked as interrupted (for example "interrupted,
+not kept"), but never store it or send it back to the model as history.
+
+The client stops active turns and measurement when the page is hidden. If Safari keeps the page in
+its back/forward cache, the same client keeps working after the page is restored; any other
+page hide disposes it.
+
 ## 4. React
 
 Use the same endpoint and Turnstile options with the optional React export:
@@ -184,7 +225,7 @@ Use the same endpoint and Turnstile options with the optional React export:
 import { useAdRouterChat, SponsoredCard } from '@adrouter/browser-sdk/react';
 
 function Chat() {
-  const chat = useAdRouterChat(options);
+  const chat = useAdRouterChat(options, { initialMessages: loadStoredConversation() });
   return <>
     {chat.state.messages.map((message, i) => <p key={i}>{message.content}</p>)}
     {(chat.state.busy || chat.state.error) && <p>{chat.state.answer}</p>}
@@ -197,13 +238,17 @@ function Chat() {
     {chat.state.error && <p role="alert">{chat.state.error.message}</p>}
     <button disabled={chat.state.busy} onClick={() => void chat.send(draft)}>Send</button>
     <button disabled={!chat.state.busy} onClick={() => void chat.cancel()}>Stop</button>
+    <button disabled={chat.state.busy} onClick={() => chat.reset()}>New story</button>
   </>;
 }
 ```
 
 Use completed history and the in-progress answer as separate views, so a completed assistant
-message is not rendered twice. Keep history storage in your browser if desired. Never persist
-sponsor offers, receipts, keys or partial answers as model conversation history.
+message is not rendered twice. `initialMessages` seeds the conversation once, for example from
+browser storage, and drops entries that are not valid user or assistant messages. `reset()`
+replaces the conversation (empty by default) and is ignored while a turn is active. Save
+`chat.state.messages` yourself if you keep history. Never persist sponsor offers, receipts, keys
+or partial answers as model conversation history.
 
 ## 5. Disclosure and measurement
 
@@ -213,9 +258,18 @@ Synthetic cards additionally display exactly:
 > Demo campaign · fictional brand · not a paid placement
 
 The built-in renderer includes these elements and the accessible label
-`Sponsored placement · demo campaign`. Give the card an opaque background, sufficient space,
-at least 12px readable text and 4.5:1 contrast. Keep it in the document flow and unobstructed.
+`Sponsored placement · demo campaign`. Its root has the class `adrouter-sponsor-card` and the demo
+line `adrouter-demo-disclosure`; style the other elements with child selectors from the root, and
+scope your page's own element rules (such as `p` or `h3`) so they do not leak into the card.
 The SDK does not infer successful rendering merely because an offer exists.
+
+The renderer checks more than the labels. A card is reported as `render_failed` unless:
+- every labelled element is visible, with text at least 12px and 4.5:1 contrast on an opaque
+  background, and no ancestor below 0.9 opacity or with a CSS filter;
+- no other painted layer overlaps the card, including positioned `pointer-events: none` overlays;
+- the page has at most 2,000 elements in its body.
+
+Keep the card in the normal document flow, for example between the conversation and the composer.
 
 Custom renderers use `client.registerPlacement` with element bindings
 `{ root, disclosure, advertiser, content, destination, demoDisclosure }`. Omission or hiding of
@@ -261,7 +315,7 @@ metadata and never replays provider inference.
 | `forbidden` | Exact publisher origin, trusted Cloudflare IP header and reviewed placement origin |
 | `unknown_persona` | Browser slug matches the server-owned persona map |
 | `turnstile_failed` | Real widget, exact hostname, `chat` action, fresh token; reset after an attempted POST |
-| `service_unavailable` from `/api/chat` while `/api/session` succeeds | SDK 0.1.0 on Cloudflare Workers; upgrade to 0.1.1 |
+| `service_unavailable` from `/api/chat` while `/api/session` succeeds | SDK 0.1.0 on Cloudflare Workers; upgrade to 0.2.0 |
 | `connection_unavailable` | Paused app qualification, all three fixtures, current credential/tokenizer revision |
 | Daily limit / `global_busy` | Read the configured cap or wait for the current turn; do not retry uncertain inference |
 | `input_limit` | Shorten the newest message or history; output remains capped at 512 |

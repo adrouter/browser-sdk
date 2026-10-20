@@ -1,14 +1,14 @@
 {
-  "source_sha": "a49648d6a75a8a0c02c4aa2c61e71b9e56292b50",
+  "source_sha": "47128bd66a500c87dfe0454a6d637174a9a0ea8c",
   "source_directory": "sdk",
   "files": [
     {
       "path": "package.json",
-      "sha256": "a0b41110ef086a89a83f2b2f7874e2f2540557779efe73d4cdbd9e9d138f2a0b"
+      "sha256": "bc546bcf7e701e956b92959e07f0ca70e71b76917683e8944cbf18cec7231910"
     },
     {
       "path": "package-lock.json",
-      "sha256": "b23b612cbe9aa4874043954a27ca9c1bee9286a334f695dc1c146556838e3dff"
+      "sha256": "d005181a2fc2a1c1ec9ba4d67866d3482512d49b5c3d485156795c74a2799d73"
     },
     {
       "path": "tsconfig.json",
@@ -16,7 +16,7 @@
     },
     {
       "path": "README.md",
-      "sha256": "7de69beb924fad1706e3c9d7d1e0cc3517bd7898b46531d5ae91b52d10120266"
+      "sha256": "2f3c34ebc4cee17d5dc336ba169c724ee3d918418631773b19d238488474abf4"
     },
     {
       "path": "LICENSE",
@@ -48,7 +48,7 @@
     },
     {
       "path": "src/index.ts",
-      "sha256": "90457720f84ff3b88d3f0822c01f35c2b8b38b988cf5aea20a1e10a892f1ad4a"
+      "sha256": "a4e98d5e299de0e9741c11f52496584db3b3a976ae889992c905fde311442293"
     },
     {
       "path": "src/parser.ts",
@@ -60,7 +60,7 @@
     },
     {
       "path": "src/react.tsx",
-      "sha256": "62e3b62afb9c2975cb5daa3b2708f581559648b8a1b47c2b9625a008be71e6af"
+      "sha256": "4ca4ed3340657947a410671d49ac227c01786e2b968c520f11d2d6943e6ae667"
     },
     {
       "path": "src/server.ts",
@@ -72,11 +72,11 @@
     },
     {
       "path": "src/version.ts",
-      "sha256": "019879cfa6e2eb87b9e56f65370e79f624a828526d0589642c482f7e508a12ab"
+      "sha256": "1cc761bd1aaa8b57b7bbd12554855708e50b9a3c3aa0f3b82ba59225c190666b"
     },
     {
       "path": "tests/client.test.ts",
-      "sha256": "d3fb0e90f4829e318dd959ba8562c0aa5789bb124e83eebe1235020427e4d047"
+      "sha256": "eec69fe99b30ac6ad2102730e184689b71abfaaee9295aea11b32357e0ace3c2"
     },
     {
       "path": "tests/history.test.ts",
@@ -89,6 +89,14 @@
     {
       "path": "tests/proxy.test.ts",
       "sha256": "bddf498657632535f370bcea090c4b030ee2081f1340cb77363be86ba59afcec"
+    },
+    {
+      "path": "tests/react.test.ts",
+      "sha256": "1f2a015bf0554aac0eaf83720ddf5ec57f53583ec20939ac1a7f37c4d8945abb"
+    },
+    {
+      "path": "tests/workerd.test.ts",
+      "sha256": "508e75bcfc00adda99ba0290aaf12c67ea50de34bd33e5b1f940dc703994908a"
     }
   ]
 }
