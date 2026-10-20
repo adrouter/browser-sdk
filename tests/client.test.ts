@@ -34,3 +34,21 @@ test('metadata recovery rejects a response for a different turn',async()=>{
   try{await assert.rejects(()=>client.getTurnStatus('requested-turn'),(error:any)=>error.code==='stream_protocol_error');}
   finally{client.dispose();}
 });
+test('a page kept in the back/forward cache stays usable; any other page hide disposes the client',async()=>{
+  const previous=(globalThis as any).window,target=new EventTarget();(globalThis as any).window=target;
+  try{
+    let aborted=0;
+    const client=createAdRouterClient({endpoints,getTurnstileToken:async()=>'synthetic-token',fetch:async(_url,init)=>new Promise((_,reject)=>{
+      init?.signal?.addEventListener('abort',()=>{aborted++;reject(new DOMException('Synthetic abort','AbortError'));},{once:true});})});
+    const first=client.sendTurn({messages:[{role:'user',content:'Synthetic prompt.'}]});
+    await new Promise(resolve=>setImmediate(resolve));
+    target.dispatchEvent(Object.assign(new Event('pagehide'),{persisted:true}));
+    await assert.rejects(first.done);assert.equal(aborted,1);
+    // Restored from the cache: the client still sends.
+    const second=client.sendTurn({messages:[{role:'user',content:'Synthetic prompt after restore.'}]});
+    await new Promise(resolve=>setImmediate(resolve));
+    target.dispatchEvent(Object.assign(new Event('pagehide'),{persisted:false}));
+    await assert.rejects(second.done);
+    assert.throws(()=>client.sendTurn({messages:[{role:'user',content:'Synthetic prompt after unload.'}]}),(error:any)=>error.code==='service_unavailable');
+  }finally{(globalThis as any).window=previous;}
+});
